@@ -6,7 +6,7 @@ CREATE TABLE Users (
     user_email VARCHAR(255) UNIQUE NOT NULL,
     user_name VARCHAR(30) NOT NULL,
     user_img TEXT,
-    user_socmed TEXT[] NOT NULL
+    user_socmed TEXT NOT NULL
 );
 
 CREATE TABLE Orgs (
@@ -69,7 +69,7 @@ CREATE TABLE EventDays (
 CREATE TABLE EventForms (
     form_id SERIAL PRIMARY KEY,
     form_event INT NOT NULL,
-    from_question JSON NOT NULL,
+    from_question TEXT NOT NULL,
 
     FOREIGN KEY (form_event) REFERENCES Events(event_id)
 );
@@ -80,7 +80,7 @@ CREATE TABLE FormResponses (
     response_form INT NOT NULL,
     resp_booth_name VARCHAR(100) NOT NULL,
     resp_booth_cutout TEXT NOT NULL,
-    response_answer JSON NOT NULL,
+    response_answer TEXT NOT NULL,
 
     FOREIGN KEY (response_submit_by) REFERENCES Users(user_id),
     FOREIGN KEY (response_form) REFERENCES EventForms(form_id)
