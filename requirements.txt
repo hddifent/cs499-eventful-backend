@@ -45,6 +45,7 @@ pillow==12.1.0
 prettytable==3.17.0
 protobuf==6.33.4
 psutil==7.2.1
+psycopg2-binary==2.9.11
 py-cpuinfo==9.0.0
 pyclipper==1.4.0
 pycryptodome==3.23.0
