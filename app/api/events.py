@@ -24,6 +24,4 @@ router = APIRouter()
 
 @router.get("/")
 def get_events():
-    return {
-        "events": events_mock
-    }
+    return events_mock
