@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.api import process_map, events, users
+from app.api.endpoints import process_map, events, users
 
 app = FastAPI()
 
