@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from typing import Annotated
 
-from app.schemas import (
+from app.api.schemas import (
     UserCreate,
     UserLogin,
     UserResponse
