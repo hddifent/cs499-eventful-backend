@@ -17,7 +17,7 @@ DATABASE_URL = url.URL.create(
 
 engine = create_async_engine(
     DATABASE_URL,
-    echo=True, # Set to False in production
+    echo=(not settings.PRODUCTION),
     pool_size=10,
     max_overflow=20
 )
