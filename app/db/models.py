@@ -24,6 +24,7 @@ class Session(Base):
 
     session_id: Mapped[str] = mapped_column(String, primary_key=True, index=True)
     session_secret: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     expire_window: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     expire_absolute: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     user_id: Mapped[int] = mapped_column(
