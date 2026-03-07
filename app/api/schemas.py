@@ -1,3 +1,4 @@
+import re
 from pydantic import BaseModel, ConfigDict, Field, EmailStr
 
 # -- Users --
@@ -5,7 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, EmailStr
 _USERNAME_FIELD = Field(
     min_length=1, 
     max_length=32,
-    pattern=r"^[a-zA-Z](?!.*[_.]{2})[a-zA-Z0-9_.]*$",
+    pattern=re.compile(r"^[a-zA-Z](?!.*[_.]{2})[a-zA-Z0-9_.]*$"),
     description="Must start with a letter, no consecutive punctuation, allows letters, numbers, underscores, and periods."
 )
 
