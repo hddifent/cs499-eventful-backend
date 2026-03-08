@@ -1,18 +1,13 @@
-from fastapi import Request, Depends
+from fastapi import Request
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from typing import Annotated
-
-from app.core.database import get_db
 from app.core.config import settings
-from app.db.models import Session
 from app.core.security import verify_session_token
+from app.db.models import Session
 from app.api.utils.http_exceptions import INVALID_SESSION
+from app.api.types import DBSession
 
 from datetime import datetime, timedelta, UTC
-
-DBSession = Annotated[AsyncSession, Depends(get_db)]
 
 async def get_current_user_id(req: Request, db: DBSession) -> int:
     req_session_token = req.cookies.get("session_token")
