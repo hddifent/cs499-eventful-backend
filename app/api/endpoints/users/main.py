@@ -33,7 +33,7 @@ router.include_router(media.router, prefix="/media")
 )
 async def create_user(data: UserCreate, db: DBSession):
     q_existing_umail = (
-        select(User)
+        select(User.user_id)
         .where(User.user_email == data.user_email)
         .limit(1)
     )
@@ -43,7 +43,7 @@ async def create_user(data: UserCreate, db: DBSession):
         raise EMAIL_ALREADY_REGISTERED
     
     q_existing_uname = (
-        select(User)
+        select(User.user_id)
         .where(User.username == data.username)
         .limit(1)
     )
