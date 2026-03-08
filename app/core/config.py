@@ -9,7 +9,9 @@ class Settings(BaseSettings):
     DB_PASS: str
     DB_PORT: int
     
-    STORAGE_ROOT: str
+    STORAGE_HOST: str
+    STORAGE_PORT: int
+    STORAGE_SKEY: str
 
     SESSION_TIMEOUT: int
     ABSOLUTE_TIMEOUT: int
