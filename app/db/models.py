@@ -16,7 +16,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     user_display_name: Mapped[str] = mapped_column(String, nullable=False)
     user_pwd: Mapped[str] = mapped_column(String, nullable=False)
-    user_pfp_suffix: Mapped[str] = mapped_column(String)
+    user_pfp_suffix: Mapped[str] = mapped_column(String, nullable=True)
 
     user_sessions: Mapped[List[Session]] = relationship(back_populates="session_user")
 
