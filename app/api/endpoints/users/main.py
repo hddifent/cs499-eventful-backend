@@ -1,35 +1,30 @@
-from fastapi import APIRouter, status, Depends
+from datetime import datetime, timedelta, UTC
+from fastapi import APIRouter, status
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from typing import Annotated
-
+from app.api.types import DBSession
 from app.api.schemas import (
     UserCreate,
     UserLogin,
     UserResponse
-)
-
-from app.core.database import get_db
-from app.core.config import settings
-from app.db.models import User, Session
-from app.core.security import (
-    hash_password,
-    verify_password,
-    generate_session_tokens,
-    hash_session_secret
 )
 from app.api.utils.http_exceptions import (
     EMAIL_ALREADY_REGISTERED,
     USERNAME_ALREADY_REGISTERED,
     INVALID_CREDENTIAL
 )
-
-from datetime import datetime, timedelta, UTC
+from app.api.endpoints.users import media
+from app.db.models import User, Session
+from app.core.config import settings
+from app.core.security import (
+    hash_password,
+    verify_password,
+    generate_session_tokens,
+    hash_session_secret
+)
 
 router = APIRouter()
-
-DBSession = Annotated[AsyncSession, Depends(get_db)]
+router.include_router(media.router, prefix="/media")
 
 @router.post(
     "/register",
