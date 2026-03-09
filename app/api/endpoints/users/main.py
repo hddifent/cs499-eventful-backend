@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, UTC
-from fastapi import APIRouter, status
-from sqlalchemy import select
+from fastapi import APIRouter, status, Request
+from sqlalchemy import select, delete
 
 from app.api.types import DBSession
 from app.api.schemas import (
@@ -20,7 +20,8 @@ from app.core.security import (
     hash_password,
     verify_password,
     generate_session_tokens,
-    hash_session_secret
+    hash_session_secret,
+    break_session_token
 )
 
 router = APIRouter()
@@ -108,4 +109,21 @@ async def login(data: UserLogin, db: DBSession):
         "message": "Login successful",
         "session_token": f"{session_id}.{session_raw_secret}",
         "session_maxage": settings.ABSOLUTE_TIMEOUT
+    }
+
+@router.post("/logout", status_code=status.HTTP_200_OK)
+async def logout(req: Request, db: DBSession):
+    req_session_token = req.cookies.get("session_token")
+    req_session_tuple = break_session_token(req_session_token)
+    if (req_session_tuple != None):
+        req_session_id, _ = req_session_tuple
+        q_delete = (
+            delete(Session)
+            .where(Session.session_id == req_session_id)
+        )
+        await db.execute(q_delete)
+        await db.commit()
+    
+    return {
+        "message": "Logout successful."
     }
