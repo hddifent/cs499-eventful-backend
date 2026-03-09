@@ -5,7 +5,8 @@ from fastapi import APIRouter, status
 from sqlalchemy import select
 
 from app.core.config import STORAGE_URL, settings
-from app.api.types import DBSession, LoggedInUID, ReqUploadFile
+from app.api.types import DBSession, ReqUploadFile
+from app.api.utils.user_dependency import LoggedInUID
 from app.api.utils.http_exceptions import (
     SHOULD_NOT_HAPPEN,
     FILE_NOT_FOUND,
