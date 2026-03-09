@@ -26,3 +26,10 @@ def hash_session_secret(secret: str) -> str:
 def verify_session_token(token: str, db_token_hash: str) -> bool:
     token_hash = hash_session_secret(token)
     return hmac.compare_digest(token_hash, db_token_hash)
+
+def break_session_token(token: str | None) -> tuple[str, str] | None:
+    if (token != None) and (len(token.split(".")) == 2):
+        s_id, s_raw = token.split(".")
+        return s_id, s_raw
+    else:
+        return None

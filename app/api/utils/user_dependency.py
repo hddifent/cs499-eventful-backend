@@ -1,8 +1,10 @@
-from fastapi import Request
+from typing import Annotated
+
+from fastapi import Request, Depends
 from sqlalchemy import select
 
 from app.core.config import settings
-from app.core.security import verify_session_token
+from app.core.security import verify_session_token, break_session_token
 from app.db.models import Session
 from app.api.utils.http_exceptions import INVALID_SESSION
 from app.api.types import DBSession
@@ -11,10 +13,11 @@ from datetime import datetime, timedelta, UTC
 
 async def get_current_user_id(req: Request, db: DBSession) -> int:
     req_session_token = req.cookies.get("session_token")
-    if (req_session_token == None) or (len(req_session_token.split(".")) != 2):
+    req_session_tuple = break_session_token(req_session_token)
+    if (req_session_tuple == None):
         raise INVALID_SESSION
     
-    req_session_id, req_session_raw_secret = req_session_token.split(".")
+    req_session_id, req_session_raw_secret = req_session_tuple
     
     q_session = (
         select(Session)
@@ -52,3 +55,5 @@ def _check_session_expiration(session: Session) -> tuple[bool, bool]:
         return False, True
     
     return False, False
+
+LoggedInUID = Annotated[int, Depends(get_current_user_id)]
