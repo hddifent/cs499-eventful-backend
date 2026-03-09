@@ -1,6 +1,4 @@
 import httpx
-from datetime import datetime, UTC
-
 from fastapi import APIRouter, status
 from sqlalchemy import select
 
