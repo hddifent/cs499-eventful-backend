@@ -11,13 +11,7 @@ from app.api.utils.http_exceptions import (
     INTERNAL_SERVER_ERROR,
     SHOULD_NOT_HAPPEN,
 )
-from app.api.utils.media import (
-    IMG_FILE_EXT,
-    MediaType,
-    media_folder,
-    media_suffix,
-    media_url,
-)
+from app.api.utils.media import IMG_FILE_EXT, MediaType, media_folder, media_suffix, media_url
 from app.api.utils.user_dependency import LoggedInUID
 from app.core.config import STORAGE_URL, settings
 from app.db.models import User

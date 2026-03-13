@@ -1,24 +1,29 @@
-import cv2
-from paddleocr import PaddleOCR
-import numpy as np
-
 from dataclasses import dataclass
 
+import cv2
+import numpy as np
+from paddleocr import PaddleOCR
+
 from app.services.utils.booth_validator import try_format_booth_number, validate_booth_number
+
 
 @dataclass
 class _ContourObjectGroup:
     base: np.ndarray
     holes: list[np.ndarray]
 
+
 def _percent256(p: float):
     return int(256 * p)
+
 
 def _graypercent256(p: float, channels: int):
     return np.array([_percent256(p)] * channels)
 
+
 def _num_between(n: float, lower: float, upper: float):
     return lower <= n <= upper
+
 
 def _remove_outliers_zscore(data, threshold: float = 3):
     data = np.array(data)
@@ -27,8 +32,10 @@ def _remove_outliers_zscore(data, threshold: float = 3):
     mask = np.abs(data - mean) <= threshold * std
     return data[mask]
 
-def _get_1cnl_base_black(shape: tuple[int, int], dtype: np.dtype = np.dtype('uint8')):
+
+def _get_1cnl_base_black(shape: tuple[int, int], dtype: np.dtype = np.dtype("uint8")):
     return np.zeros(shape, dtype)
+
 
 def _get_leveled_hierarchy(h):
     levels_array = []
@@ -41,17 +48,21 @@ def _get_leveled_hierarchy(h):
             h_index = current_level_queue.pop(0)
             visited.append(int(h_index))
             n, _, c, _ = h[0][h_index]
-            if n != -1: current_level_queue.append(n)
-            if c != -1: next_level.append(c)
-        
+            if n != -1:
+                current_level_queue.append(n)
+            if c != -1:
+                next_level.append(c)
+
         levels_array.append(visited)
 
-        if len(next_level) == 0: break
+        if len(next_level) == 0:
+            break
 
         current_level_queue = next_level.copy()
         next_level = []
-    
+
     return levels_array
+
 
 def _get_contour_groups(c, h, bases: list[int]):
     list_contours_group = []
@@ -59,10 +70,11 @@ def _get_contour_groups(c, h, bases: list[int]):
     for i in bases:
         contours_group = []
         indexes_group = []
-        checking_index = h[0][i][2] # Opposite hierarchy level.
+        checking_index = h[0][i][2]  # Opposite hierarchy level.
 
         while True:
-            if checking_index == -1: break
+            if checking_index == -1:
+                break
 
             # We want the outline to be in the same hierarchy level.
             # If there's none, consider that it has no inner outline.
@@ -70,18 +82,20 @@ def _get_contour_groups(c, h, bases: list[int]):
             if inner_index != -1:
                 contours_group.append(c[inner_index])
                 indexes_group.append(int(inner_index))
-            
-            checking_index = h[0][checking_index][0] # Next neighbor
-        
+
+            checking_index = h[0][checking_index][0]  # Next neighbor
+
         list_contours_group.append(_ContourObjectGroup(c[i], contours_group))
-    
+
     return list_contours_group
+
 
 def _get_contour_group_area(group: _ContourObjectGroup):
     area = cv2.contourArea(group.base)
     for c in group.holes:
         area -= cv2.contourArea(c)
     return area
+
 
 def extract_image_contours(image: np.ndarray):
     # Image Metadata -----------------------------------------------------------------------------------
@@ -114,13 +128,21 @@ def extract_image_contours(image: np.ndarray):
     raw_contour_group_area = [_get_contour_group_area(g) for g in contour_group]
 
     small_area_threshold = (1 / 10000.0) * image_pixels
-    large_area_threshold = (1 /   100.0) * image_pixels
-    contour_group_area = [a for a in raw_contour_group_area if _num_between(a, small_area_threshold, large_area_threshold)]
+    large_area_threshold = (1 / 100.0) * image_pixels
+    contour_group_area = [
+        a
+        for a in raw_contour_group_area
+        if _num_between(a, small_area_threshold, large_area_threshold)
+    ]
     contour_group_area = _remove_outliers_zscore(contour_group_area)
 
     area_threshold_lower = min(contour_group_area)
     area_threshold_upper = max(contour_group_area)
-    contours_group_reasonable = [g for g in contour_group if _num_between(_get_contour_group_area(g), area_threshold_lower, area_threshold_upper)]
+    contours_group_reasonable = [
+        g
+        for g in contour_group
+        if _num_between(_get_contour_group_area(g), area_threshold_lower, area_threshold_upper)
+    ]
     contour_group_bases = [g.base for g in contours_group_reasonable]
 
     # Get "OCR-able" text area -------------------------------------------------------------------------
@@ -131,34 +153,31 @@ def extract_image_contours(image: np.ndarray):
     selected_area_text = cv2.merge([selected_area_text, selected_area_text, selected_area_text])
 
     return {
-        "booth_contours": contour_group_bases, # For UI Rendering
+        "booth_contours": contour_group_bases,  # For UI Rendering
         "booth_text_img": selected_area_text,  # For OCR Scanning
     }
+
 
 def run_ocr(ocr_model: PaddleOCR, image: np.ndarray):
     result = ocr_model.predict(image)
 
     if not result or len(result) == 0:
-        return {
-            "texts": [],
-            "scores": [],
-            "boxes": []
-        }
+        return {"texts": [], "scores": [], "boxes": []}
 
     data = result[0]
 
-    return {
-        "texts": data["rec_texts"],
-        "scores": data["rec_scores"],
-        "boxes": data["rec_boxes"]
-    }
+    return {"texts": data["rec_texts"], "scores": data["rec_scores"], "boxes": data["rec_boxes"]}
 
-def match_contour_ocr_result(contours: list[np.ndarray], ocr_data: dict, booth_number_format: str = "$##"):
+
+def match_contour_ocr_result(
+    contours: list[np.ndarray], ocr_data: dict, booth_number_format: str = "$##"
+):
     matched = {}
     zipped_results = list(zip(ocr_data["texts"], ocr_data["scores"], ocr_data["boxes"]))
 
-    for (text, score, box) in zipped_results:
-        if score < 0.7: continue
+    for text, score, box in zipped_results:
+        if score < 0.7:
+            continue
 
         formatted = try_format_booth_number(text, booth_number_format)
         if not validate_booth_number(formatted, booth_number_format):
@@ -173,9 +192,7 @@ def match_contour_ocr_result(contours: list[np.ndarray], ocr_data: dict, booth_n
             inside = cv2.pointPolygonTest(contour, center, False)
             if inside >= 0:
                 x, y, w, h = cv2.boundingRect(contour)
-                matched[formatted] = {
-                    "bounding_box": ((x, y), (x + w, y + h))
-                }
+                matched[formatted] = {"bounding_box": ((x, y), (x + w, y + h))}
                 break
 
     return matched
