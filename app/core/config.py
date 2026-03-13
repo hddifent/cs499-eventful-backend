@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
 class Settings(BaseSettings):
     PRODUCTION: bool
 
@@ -8,7 +9,7 @@ class Settings(BaseSettings):
     DB_USER: str
     DB_PASS: str
     DB_PORT: int
-    
+
     STORAGE_HOST: str
     STORAGE_PORT: int
     STORAGE_SKEY: str
@@ -20,6 +21,8 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env")
 
-settings = Settings() # type: ignore
 
-STORAGE_URL = f"{settings.STORAGE_HOST}/{settings.STORAGE_PORT}"
+settings = Settings()  # type: ignore
+
+_protocol = "https://" if settings.PRODUCTION else "http://"
+STORAGE_URL = f"{_protocol}{settings.STORAGE_HOST}:{settings.STORAGE_PORT}"
