@@ -35,6 +35,9 @@ class UserResponse(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
+class UserProfile(UserResponse):
+    pfp_url: str
+
 # TODO: Mocking a lot of stuffs rn. Fix me pls.
 # -- Events --
 class EventBase(BaseModel):
