@@ -9,4 +9,4 @@ skip-magic-trailing-comma = false
 
 [lint]
 select = ["E", "F", "FAST", "I", "N", "W"]
-ignore = ["COM812", "E401", "E711"]
+ignore = ["COM812", "E401", "E501", "E711"]
