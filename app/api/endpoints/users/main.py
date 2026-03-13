@@ -28,7 +28,11 @@ router = APIRouter()
 router.include_router(media.router, prefix="/media")
 
 
-@router.post("/register", status_code=status.HTTP_201_CREATED, response_model=UserResponse)
+@router.post(
+    "/register",
+    status_code=status.HTTP_201_CREATED,
+    response_model=UserResponse,
+)
 async def create_user(data: UserCreate, db: DBSession):
     q_existing_umail = select(User.user_id).where(User.user_email == data.user_email).limit(1)
     r_existing_umail = await db.execute(q_existing_umail)
@@ -58,7 +62,10 @@ async def create_user(data: UserCreate, db: DBSession):
     return new_user
 
 
-@router.post("/login", status_code=status.HTTP_200_OK)
+@router.post(
+    "/login",
+    status_code=status.HTTP_200_OK,
+)
 async def login(data: UserLogin, db: DBSession):
     q_user = select(User.user_id, User.user_pwd).where(User.username == data.username).limit(1)
     r_user = await db.execute(q_user)
@@ -95,7 +102,10 @@ async def login(data: UserLogin, db: DBSession):
     }
 
 
-@router.post("/logout", status_code=status.HTTP_200_OK)
+@router.post(
+    "/logout",
+    status_code=status.HTTP_200_OK,
+)
 async def logout(req: Request, db: DBSession):
     req_session_token = req.cookies.get("session_token")
     req_session_tuple = break_session_token(req_session_token)
@@ -108,7 +118,11 @@ async def logout(req: Request, db: DBSession):
     return {"message": "Logout successful."}
 
 
-@router.get("/me", status_code=status.HTTP_200_OK, response_model=UserProfile)
+@router.get(
+    "/me",
+    status_code=status.HTTP_200_OK,
+    response_model=UserProfile,
+)
 async def get_profile(uid: LoggedInUID, db: DBSession):
     q_profile = (
         select(User.username, User.user_display_name, User.user_pfp_suffix)
