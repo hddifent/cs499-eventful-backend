@@ -6,13 +6,17 @@ from app.api.types import DBSession
 from app.api.schemas import (
     UserCreate,
     UserLogin,
-    UserResponse
+    UserResponse,
+    UserProfile
 )
 from app.api.utils.http_exceptions import (
     EMAIL_ALREADY_REGISTERED,
     USERNAME_ALREADY_REGISTERED,
-    INVALID_CREDENTIAL
+    INVALID_CREDENTIAL,
+    SHOULD_NOT_HAPPEN
 )
+from app.api.utils.user_dependency import LoggedInUID
+from app.api.utils.media import MediaType, media_url
 from app.api.endpoints.users import media
 from app.db.models import User, Session
 from app.core.config import settings
@@ -127,3 +131,37 @@ async def logout(req: Request, db: DBSession):
     return {
         "message": "Logout successful."
     }
+
+@router.get(
+    "/me",
+    status_code=status.HTTP_200_OK,
+    response_model=UserProfile
+)
+async def get_profile(uid: LoggedInUID, db: DBSession):
+    q_profile = (
+        select(
+            User.username,
+            User.user_display_name,
+            User.user_pfp_suffix
+        )
+        .where(User.user_id == uid)
+        .limit(1)
+    )
+    r_profile = await db.execute(q_profile)
+    row_profile = r_profile.first()
+
+    if (row_profile == None):
+        raise SHOULD_NOT_HAPPEN # as uid is a dependency
+    
+    f_uname, f_disp, f_pfp_suf = row_profile.tuple()
+    pfp_url = (
+        media_url(MediaType.USER_PROFILE, f"{f_uname}_{f_pfp_suf}")
+        if f_pfp_suf != None
+        else ""
+    )
+
+    return UserProfile(
+        username=f_uname,
+        user_display_name=f_disp,
+        pfp_url=pfp_url
+    )
