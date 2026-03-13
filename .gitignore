@@ -50,6 +50,7 @@ test.sqlite3
 
 # IDE and editors
 .vscode/
+.zed/
 .idea/
 *.swp
 *.swo

@@ -11,13 +11,7 @@ from app.api.utils.http_exceptions import (
     INTERNAL_SERVER_ERROR,
     SHOULD_NOT_HAPPEN,
 )
-from app.api.utils.media import (
-    IMG_FILE_EXT,
-    MediaType,
-    media_folder,
-    media_suffix,
-    media_url,
-)
+from app.api.utils.media import IMG_FILE_EXT, MediaType, media_folder, media_suffix, media_url
 from app.api.utils.user_dependency import LoggedInUID
 from app.core.config import STORAGE_URL, settings
 from app.db.models import User
@@ -25,7 +19,10 @@ from app.db.models import User
 router = APIRouter()
 
 
-@router.post("/profilepic", status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/profilepic",
+    status_code=status.HTTP_201_CREATED,
+)
 async def upload_pfp(file: ReqUploadFile, uid: LoggedInUID, db: DBSession):
     if file.filename == None:
         raise BAD_REQUEST
@@ -73,7 +70,10 @@ async def upload_pfp(file: ReqUploadFile, uid: LoggedInUID, db: DBSession):
     return {"url": pfp_url}
 
 
-@router.get("/profilepic/{username}", status_code=status.HTTP_200_OK)
+@router.get(
+    "/profilepic/{username}",
+    status_code=status.HTTP_200_OK,
+)
 async def fetch_pfp_from_username(username: str, db: DBSession):
     q_suffix = select(User.user_pfp_suffix).where(User.username == username).limit(1)
     r_suffix = await db.execute(q_suffix)

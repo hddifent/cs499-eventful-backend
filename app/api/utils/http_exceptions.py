@@ -1,51 +1,51 @@
-from fastapi import status, HTTPException
+from fastapi import HTTPException, status
 
 BAD_REQUEST = HTTPException(
     status_code=status.HTTP_400_BAD_REQUEST,
-    detail="Bad request."
+    detail="Bad request.",
 )
 
 EMAIL_ALREADY_REGISTERED = HTTPException(
     status_code=status.HTTP_400_BAD_REQUEST,
-    detail="This email has already been registered."
+    detail="This email has already been registered.",
 )
 
 USERNAME_ALREADY_REGISTERED = HTTPException(
     status_code=status.HTTP_400_BAD_REQUEST,
-    detail="User with this username already existed."
+    detail="User with this username already existed.",
 )
 
 BAD_FILE_TYPE = HTTPException(
     status_code=status.HTTP_400_BAD_REQUEST,
-    detail="Bad file type."
+    detail="Bad file type.",
 )
 
 INVALID_CREDENTIAL = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
-    detail="Incorrect username or password."
+    detail="Incorrect username or password.",
 )
 
 INVALID_SESSION = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
-    detail="Invalid session."
+    detail="Invalid session.",
 )
 
 FILE_NOT_FOUND = HTTPException(
     status_code=status.HTTP_404_NOT_FOUND,
-    detail="File not found."
+    detail="File not found.",
 )
 
 INTERNAL_SERVER_ERROR = HTTPException(
     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-    detail="Internal server error. Operation cannot be completed from connection error."
+    detail="Internal server error. Operation cannot be completed from connection error.",
 )
 
 INTERNAL_LOGIC_ERROR = HTTPException(
     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-    detail="Internal server error. Logical error, contact devs."
+    detail="Internal server error. Logical error, contact devs.",
 )
 
 SHOULD_NOT_HAPPEN = HTTPException(
     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-    detail="Internal server error. This error shouldn't happen, contact devs."
+    detail="Internal server error. This error shouldn't happen, contact devs.",
 )
