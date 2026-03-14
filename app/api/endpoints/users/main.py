@@ -4,7 +4,6 @@ from fastapi import APIRouter, Request, status
 from sqlalchemy import delete, select
 
 from app.api.endpoints.users import media
-from app.api.schemas import UserCreate, UserLogin, UserProfile, UserResponse
 from app.api.types import DBSession
 from app.api.utils.http_exceptions import (
     EMAIL_ALREADY_REGISTERED,
@@ -23,6 +22,7 @@ from app.core.security import (
     verify_password,
 )
 from app.db.models import Session, User
+from app.schemas.users import UserCreate, UserLogin, UserProfile, UserResponse
 
 router = APIRouter()
 router.include_router(media.router, prefix="/media")
