@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from app.api.endpoints import events, process_map
+from app.api.endpoints import events, orgs, process_map
 from app.api.endpoints.users import main as users
 from app.api.utils.http_exceptions import INVALID_CREDENTIAL
 
@@ -29,4 +29,5 @@ async def req_validate_exp_handler(req: Request, exc: RequestValidationError):
 
 app.include_router(users.router, prefix="/api/users")
 app.include_router(events.router, prefix="/api/events")
+app.include_router(orgs.router, prefix="/api/orgs")
 app.include_router(process_map.router, prefix="/api/map")

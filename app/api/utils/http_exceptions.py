@@ -15,6 +15,16 @@ USERNAME_ALREADY_REGISTERED = HTTPException(
     detail="User with this username already existed.",
 )
 
+ORG_UNAME_ALREADY_REGISTERED = HTTPException(
+    status_code=status.HTTP_400_BAD_REQUEST,
+    detail="Organizer Group with this unique name already existed.",
+)
+
+ORG_DNAME_ALREADY_REGISTERED = HTTPException(
+    status_code=status.HTTP_400_BAD_REQUEST,
+    detail="Organizer Group with this display name already existed.",
+)
+
 BAD_FILE_TYPE = HTTPException(
     status_code=status.HTTP_400_BAD_REQUEST,
     detail="Bad file type.",
@@ -30,9 +40,27 @@ INVALID_SESSION = HTTPException(
     detail="Invalid session.",
 )
 
+FORBIDDEN = HTTPException(
+    status_code=status.HTTP_403_FORBIDDEN,
+    detail="Access forbidden.",
+)
+
+ORG_INVITATION_NOT_ACCEPTED = HTTPException(
+    status_code=status.HTTP_403_FORBIDDEN,
+    detail={
+        "message": "Access forbidden.",
+        "invited": True,
+    },
+)
+
 FILE_NOT_FOUND = HTTPException(
     status_code=status.HTTP_404_NOT_FOUND,
     detail="File not found.",
+)
+
+ORG_NOT_FOUND = HTTPException(
+    status_code=status.HTTP_404_NOT_FOUND,
+    detail="Organizer Group not found.",
 )
 
 INTERNAL_SERVER_ERROR = HTTPException(
@@ -48,4 +76,9 @@ INTERNAL_LOGIC_ERROR = HTTPException(
 SHOULD_NOT_HAPPEN = HTTPException(
     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
     detail="Internal server error. This error shouldn't happen, contact devs.",
+)
+
+NOT_IMPLEMENTED = HTTPException(
+    status_code=status.HTTP_501_NOT_IMPLEMENTED,
+    detail="Not implemented, contact devs.",
 )
