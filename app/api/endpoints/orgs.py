@@ -10,9 +10,15 @@ from app.api.utils.http_exceptions import (
     ORG_NOT_FOUND,
     ORG_UNAME_ALREADY_REGISTERED,
 )
+from app.api.utils.org_dependency import AuthorizedOrgID
 from app.api.utils.user_dependency import LoggedInUID
 from app.db.models import OrganizerGroup, OrganizerMember, OrganizerMemberStatus
-from app.schemas.orgs import OrgCreate
+from app.schemas.orgs import (
+    OrgCreate,
+    OrgMemberAction,
+    OrgPagePrivateResponse,
+    OrgPagePublicResponse,
+)
 
 router = APIRouter()
 
@@ -57,24 +63,37 @@ async def create_org(data: OrgCreate, uid: LoggedInUID, db: DBSession):
 @router.get(
     "/{org_unique_name}",
     status_code=status.HTTP_200_OK,
+    response_model=OrgPagePublicResponse,
 )
-async def get_org_by_uname(org_unique_name: str, uid: LoggedInUID, db: DBSession):
-    q_org_id = (
-        select(OrganizerGroup.org_id)
-        .where(OrganizerGroup.org_unique_name == org_unique_name)
-        .limit(1)
-    )
-    r_org_id = await db.execute(q_org_id)
-    s_org_id = r_org_id.scalar_one_or_none()
+async def get_org_by_uname(org_unique_name: str, db: DBSession):
+    q_org = select(OrganizerGroup).where(OrganizerGroup.org_unique_name == org_unique_name).limit(1)
+    r_org = await db.execute(q_org)
+    s_org = r_org.scalar_one_or_none()
 
-    if s_org_id == None:
+    if s_org == None:
+        raise ORG_NOT_FOUND
+
+    return s_org
+
+
+@router.get(
+    "/{org_unique_name}/full",
+    status_code=status.HTTP_200_OK,
+    response_model=OrgPagePrivateResponse,
+)
+async def get_full_org_by_uname(org_unique_name: str, uid: LoggedInUID, db: DBSession):
+    q_org = select(OrganizerGroup).where(OrganizerGroup.org_unique_name == org_unique_name).limit(1)
+    r_org = await db.execute(q_org)
+    s_org = r_org.scalar_one_or_none()
+
+    if s_org == None:
         raise ORG_NOT_FOUND
 
     q_perm = (
         select(OrganizerMember.status)
         .where(
             and_(
-                OrganizerMember.org_id == s_org_id,
+                OrganizerMember.org_id == s_org.org_id,
                 OrganizerMember.user_id == uid,
             )
         )
@@ -88,15 +107,15 @@ async def get_org_by_uname(org_unique_name: str, uid: LoggedInUID, db: DBSession
     elif s_perm == OrganizerMemberStatus.INVITED:
         raise ORG_INVITATION_NOT_ACCEPTED
 
-    raise NOT_IMPLEMENTED
+    return s_org
 
 
 # FIXME
 @router.post(
-    "/{org_unique_name}/invite/{username}",
+    "/invite",
     status_code=status.HTTP_200_OK,
 )
-async def invite_member(org_unique_name: str, username: str, uid: LoggedInUID, db: DBSession):
+async def invite_member(data: OrgMemberAction, org_id: AuthorizedOrgID, db: DBSession):
     raise NOT_IMPLEMENTED
 
 
