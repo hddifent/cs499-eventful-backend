@@ -1,8 +1,9 @@
 from fastapi import APIRouter, status
-from sqlalchemy import and_, select
+from sqlalchemy import and_, delete, select
 
 from app.api.types import DBSession
 from app.api.utils.http_exceptions import (
+    BAD_REQUEST,
     FORBIDDEN,
     NOT_IMPLEMENTED,
     ORG_DNAME_ALREADY_REGISTERED,
@@ -12,7 +13,7 @@ from app.api.utils.http_exceptions import (
 )
 from app.api.utils.org_dependency import AuthorizedOrgID
 from app.api.utils.user_dependency import LoggedInUID
-from app.db.models import OrganizerGroup, OrganizerMember, OrganizerMemberStatus
+from app.db.models import OrganizerGroup, OrganizerMember, OrganizerMemberStatus, User
 from app.schemas.orgs import (
     OrgCreate,
     OrgMemberAction,
@@ -57,7 +58,7 @@ async def create_org(data: OrgCreate, uid: LoggedInUID, db: DBSession):
     db.add(new_org)
     await db.commit()
 
-    return {"message": "Organization Created"}
+    return {"message": "Organization created."}
 
 
 @router.get(
@@ -110,21 +111,51 @@ async def get_full_org_by_uname(org_unique_name: str, uid: LoggedInUID, db: DBSe
     return s_org
 
 
-# FIXME
 @router.post(
     "/invite",
     status_code=status.HTTP_200_OK,
 )
 async def invite_member(data: OrgMemberAction, org_id: AuthorizedOrgID, db: DBSession):
-    raise NOT_IMPLEMENTED
+    q_uid = select(User.user_id).where(User.username == data.username).limit(1)
+    r_uid = await db.execute(q_uid)
+    s_uid = r_uid.scalar_one_or_none()
+
+    if s_uid == None:
+        raise BAD_REQUEST
+
+    new_org_member = OrganizerMember(
+        user_id=s_uid,
+        org_id=org_id,
+        status=OrganizerMemberStatus.INVITED,
+    )
+
+    db.add(new_org_member)
+    await db.commit()
+
+    return {"message": "User invited."}
 
 
+# Can we do this in one query?
 @router.post(
-    "/{org_unique_name}/revoke/{username}",
+    "/revoke",
     status_code=status.HTTP_200_OK,
 )
-async def revoke_member(org_unique_name: str, username: str, uid: LoggedInUID, db: DBSession):
-    raise NOT_IMPLEMENTED
+async def revoke_member(data: OrgMemberAction, org_id: AuthorizedOrgID, db: DBSession):
+    q_uid = select(User.user_id).where(User.username == data.username).limit(1)
+    r_uid = await db.execute(q_uid)
+    s_uid = r_uid.scalar_one_or_none()
+
+    if s_uid != None:
+        q_delete = delete(OrganizerMember).where(
+            and_(
+                OrganizerMember.org_id == org_id,
+                OrganizerMember.user_id == s_uid,
+            )
+        )
+        await db.execute(q_delete)
+        await db.commit()
+
+    return {"message": "User revoked."}
 
 
 @router.post(
