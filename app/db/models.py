@@ -21,12 +21,12 @@ from app.core.database import Base
 
 
 # ENUMS --------------------------------------------------------------------------------------------
-class OrganizerMemberStatus(enum.Enum):
+class OrganizerMemberStatus(str, enum.Enum):
     INVITED = "INVITED"
     JOINED = "JOINED"
 
 
-class EventPublicationStatus(enum.Enum):
+class EventPublicationStatus(str, enum.Enum):
     DRAFT = "DRAFT"
     PUBLIC = "PUBLIC"
 
