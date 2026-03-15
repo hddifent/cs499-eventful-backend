@@ -5,6 +5,7 @@ from app.api.types import DBSession
 from app.api.utils.http_exceptions import (
     BAD_REQUEST,
     FORBIDDEN,
+    ORG_ALREADY_INVITED,
     ORG_DNAME_ALREADY_REGISTERED,
     ORG_INVITATION_NOT_ACCEPTED,
     ORG_NOT_FOUND,
@@ -56,6 +57,15 @@ async def create_org(data: OrgCreate, uid: LoggedInUID, db: DBSession):
     )
 
     db.add(new_org)
+    await db.flush()
+
+    new_org_member = OrganizerMember(
+        user_id=uid,
+        org_id=new_org.org_id,
+        status=OrganizerMemberStatus.JOINED,
+    )
+
+    db.add(new_org_member)
     await db.commit()
 
     return {"message": "Organization created."}
@@ -122,6 +132,22 @@ async def invite_member(data: OrgMemberAction, org_id: AuthorizedOrgID, db: DBSe
 
     if s_uid == None:
         raise BAD_REQUEST
+
+    q_existing_member = (
+        select(OrganizerMember)
+        .where(
+            and_(
+                OrganizerMember.org_id == org_id,
+                OrganizerMember.user_id == s_uid,
+            )
+        )
+        .limit(1)
+    )
+    r_existing_member = await db.execute(q_existing_member)
+    s_existing_member = r_existing_member.scalar_one_or_none()
+
+    if s_existing_member != None:
+        raise ORG_ALREADY_INVITED
 
     new_org_member = OrganizerMember(
         user_id=s_uid,

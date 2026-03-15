@@ -25,6 +25,11 @@ ORG_DNAME_ALREADY_REGISTERED = HTTPException(
     detail="Organizer Group with this display name already existed.",
 )
 
+ORG_ALREADY_INVITED = HTTPException(
+    status_code=status.HTTP_400_BAD_REQUEST,
+    detail="User has already been invited.",
+)
+
 BAD_FILE_TYPE = HTTPException(
     status_code=status.HTTP_400_BAD_REQUEST,
     detail="Bad file type.",
