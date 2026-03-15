@@ -5,13 +5,13 @@ from app.api.types import DBSession
 from app.api.utils.http_exceptions import (
     BAD_REQUEST,
     FORBIDDEN,
-    NOT_IMPLEMENTED,
     ORG_DNAME_ALREADY_REGISTERED,
     ORG_INVITATION_NOT_ACCEPTED,
     ORG_NOT_FOUND,
     ORG_UNAME_ALREADY_REGISTERED,
+    SHOULD_NOT_HAPPEN,
 )
-from app.api.utils.org_dependency import AuthorizedOrgID
+from app.api.utils.org_dependency import AuthorizedOrgID, OrgMembership
 from app.api.utils.user_dependency import LoggedInUID
 from app.db.models import OrganizerGroup, OrganizerMember, OrganizerMemberStatus, User
 from app.schemas.orgs import (
@@ -135,7 +135,6 @@ async def invite_member(data: OrgMemberAction, org_id: AuthorizedOrgID, db: DBSe
     return {"message": "User invited."}
 
 
-# Can we do this in one query?
 @router.post(
     "/revoke",
     status_code=status.HTTP_200_OK,
@@ -159,16 +158,53 @@ async def revoke_member(data: OrgMemberAction, org_id: AuthorizedOrgID, db: DBSe
 
 
 @router.post(
-    "/{org_unique_name}/acceptinvite",
+    "/acceptinvite",
     status_code=status.HTTP_200_OK,
 )
-async def accept_invite(org_unique_name: str, uid: LoggedInUID, db: DBSession):
-    raise NOT_IMPLEMENTED
+async def accept_invite(uid: LoggedInUID, org_membership: OrgMembership, db: DBSession):
+    org_id, org_member_status = org_membership
+    if org_member_status != OrganizerMemberStatus.INVITED:
+        raise BAD_REQUEST
+
+    q_member = (
+        select(OrganizerMember)
+        .where(
+            and_(
+                OrganizerMember.org_id == org_id,
+                OrganizerMember.user_id == uid,
+            )
+        )
+        .limit(1)
+    )
+    r_member = await db.execute(q_member)
+    s_member = r_member.scalar_one_or_none()
+
+    if s_member == None:
+        raise SHOULD_NOT_HAPPEN  # as org_membership is a dependency
+
+    s_member.status = OrganizerMemberStatus.JOINED
+    await db.commit()
+
+    return {"message": "Organizer Group joined successfully."}
 
 
 @router.post(
-    "/{org_unique_name}/rejectinvite",
+    "/rejectinvite",
     status_code=status.HTTP_200_OK,
 )
-async def reject_invite(org_unique_name: str, uid: LoggedInUID, db: DBSession):
-    raise NOT_IMPLEMENTED
+async def reject_invite(uid: LoggedInUID, org_membership: OrgMembership, db: DBSession):
+    org_id, org_member_status = org_membership
+    if org_member_status != OrganizerMemberStatus.INVITED:
+        raise BAD_REQUEST
+
+    # TODO: Maybe change to OrganizerMemberStatus.REJECTED instead?
+    q_delete = delete(OrganizerMember).where(
+        and_(
+            OrganizerMember.org_id == org_id,
+            OrganizerMember.user_id == uid,
+        )
+    )
+    await db.execute(q_delete)
+    await db.commit()
+
+    return {"message": "Organizer Group invitation rejected."}

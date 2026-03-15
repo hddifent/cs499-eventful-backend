@@ -10,7 +10,9 @@ from app.db.models import OrganizerGroup, OrganizerMember, OrganizerMemberStatus
 from app.schemas.orgs import OrgBase
 
 
-async def get_authorized_org_id(data: OrgBase, uid: LoggedInUID, db: DBSession) -> int:
+async def get_org_membership_of_user(
+    data: OrgBase, uid: LoggedInUID, db: DBSession
+) -> tuple[int, OrganizerMemberStatus]:
     q_org_id = (
         select(OrganizerGroup.org_id)
         .where(OrganizerGroup.org_unique_name == data.org_unique_name)
@@ -37,10 +39,17 @@ async def get_authorized_org_id(data: OrgBase, uid: LoggedInUID, db: DBSession) 
 
     if s_perm == None:
         raise FORBIDDEN
-    elif s_perm == OrganizerMemberStatus.INVITED:
+
+    return s_org_id, s_perm
+
+
+async def get_authorized_org_id(data: OrgBase, uid: LoggedInUID, db: DBSession) -> int:
+    org_id, org_member_status = await get_org_membership_of_user(data, uid, db)
+    if org_member_status != OrganizerMemberStatus.JOINED:
         raise ORG_INVITATION_NOT_ACCEPTED
 
-    return s_org_id
+    return org_id
 
 
+OrgMembership = Annotated[tuple[int, OrganizerMemberStatus], Depends(get_org_membership_of_user)]
 AuthorizedOrgID = Annotated[int, Depends(get_authorized_org_id)]
