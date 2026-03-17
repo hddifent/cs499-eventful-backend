@@ -9,6 +9,7 @@ from app.api.utils.http_exceptions import (
     EMAIL_ALREADY_REGISTERED,
     INVALID_CREDENTIAL,
     SHOULD_NOT_HAPPEN,
+    USER_NOT_FOUND,
     USERNAME_ALREADY_REGISTERED,
 )
 from app.api.utils.media import MediaType, media_url
@@ -21,8 +22,15 @@ from app.core.security import (
     hash_session_secret,
     verify_password,
 )
-from app.db.models import Session, User
-from app.schemas.users import UserCreate, UserLogin, UserProfile, UserResponse
+from app.db.models import OrganizerGroup, OrganizerMember, OrganizerMemberStatus, Session, User
+from app.schemas.orgs import OrgPagePublicResponse
+from app.schemas.users import (
+    UserCreate,
+    UserLogin,
+    UserPrivateProfile,
+    UserPublicProfile,
+    UserResponse,
+)
 
 router = APIRouter()
 router.include_router(media.router, prefix="/media")
@@ -119,11 +127,41 @@ async def logout(req: Request, db: DBSession):
 
 
 @router.get(
-    "/me",
+    "/profile/{username}",
     status_code=status.HTTP_200_OK,
-    response_model=UserProfile,
+    response_model=UserPublicProfile,
+)
+async def get_public_profile(username: str, db: DBSession):
+    q_profile = (
+        select(User.user_display_name, User.user_pfp_suffix)
+        .where(User.username == username)
+        .limit(1)
+    )
+    r_profile = await db.execute(q_profile)
+    row_profile = r_profile.first()
+
+    if row_profile == None:
+        raise USER_NOT_FOUND
+
+    f_disp, f_pfp_suf = row_profile.tuple()
+    pfp_url = (
+        media_url(MediaType.USER_PROFILE, f"{username}_{f_pfp_suf}") if f_pfp_suf != None else ""
+    )
+    return UserPublicProfile(
+        username=username,
+        user_display_name=f_disp,
+        pfp_url=pfp_url,
+    )
+
+
+# FIXME: Duplicate codes?
+@router.get(
+    "/profile",
+    status_code=status.HTTP_200_OK,
+    response_model=UserPrivateProfile,
 )
 async def get_profile(uid: LoggedInUID, db: DBSession):
+    # General Profile ----------------------------------------------------------
     q_profile = (
         select(User.username, User.user_display_name, User.user_pfp_suffix)
         .where(User.user_id == uid)
@@ -140,4 +178,32 @@ async def get_profile(uid: LoggedInUID, db: DBSession):
         media_url(MediaType.USER_PROFILE, f"{f_uname}_{f_pfp_suf}") if f_pfp_suf != None else ""
     )
 
-    return UserProfile(username=f_uname, user_display_name=f_disp, pfp_url=pfp_url)
+    # Organizer Group Data -----------------------------------------------------
+    q_org_memberships = (
+        select(OrganizerGroup, OrganizerMember.status)
+        .join(OrganizerMember, OrganizerGroup.org_id == OrganizerMember.org_id)
+        .where(OrganizerMember.user_id == uid)
+    )
+    r_org_memberships = await db.execute(q_org_memberships)
+    rows_org_memberships = r_org_memberships.all()
+    tuples_org_memberships = [row.tuple() for row in rows_org_memberships]
+
+    org_invited = [
+        OrgPagePublicResponse.model_validate(org)
+        for (org, status) in tuples_org_memberships
+        if status == OrganizerMemberStatus.INVITED
+    ]
+
+    org_joined = [
+        OrgPagePublicResponse.model_validate(org)
+        for (org, status) in tuples_org_memberships
+        if status == OrganizerMemberStatus.JOINED
+    ]
+
+    return UserPrivateProfile(
+        username=f_uname,
+        user_display_name=f_disp,
+        pfp_url=pfp_url,
+        user_orgs_invited=org_invited,
+        user_orgs_joined=org_joined,
+    )

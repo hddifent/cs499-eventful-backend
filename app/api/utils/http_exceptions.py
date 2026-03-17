@@ -63,6 +63,11 @@ FILE_NOT_FOUND = HTTPException(
     detail="File not found.",
 )
 
+USER_NOT_FOUND = HTTPException(
+    status_code=status.HTTP_404_NOT_FOUND,
+    detail="User not found.",
+)
+
 ORG_NOT_FOUND = HTTPException(
     status_code=status.HTTP_404_NOT_FOUND,
     detail="Organizer Group not found.",
