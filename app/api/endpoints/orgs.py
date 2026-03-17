@@ -93,12 +93,7 @@ async def get_org_by_uname(org_unique_name: str, db: DBSession):
     response_model=OrgPagePrivateResponse,
 )
 async def get_full_org_by_uname(org_unique_name: str, uid: LoggedInUID, db: DBSession):
-    q_org = select(OrganizerGroup).where(OrganizerGroup.org_unique_name == org_unique_name).limit(1)
-    r_org = await db.execute(q_org)
-    s_org = r_org.scalar_one_or_none()
-
-    if s_org == None:
-        raise ORG_NOT_FOUND
+    s_org = await get_org_by_uname(org_unique_name, db)
 
     q_perm = (
         select(OrganizerMember.status)
