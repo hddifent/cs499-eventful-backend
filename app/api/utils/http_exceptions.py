@@ -52,10 +52,7 @@ FORBIDDEN = HTTPException(
 
 ORG_INVITATION_NOT_ACCEPTED = HTTPException(
     status_code=status.HTTP_403_FORBIDDEN,
-    detail={
-        "message": "Access forbidden.",
-        "invited": True,
-    },
+    detail="Access forbidden. However, an invite to this group has been issued to you. Please accept it in your accounts page.",
 )
 
 FILE_NOT_FOUND = HTTPException(

@@ -2,6 +2,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Request, status
 from sqlalchemy import delete, select
+from sqlalchemy.orm import selectinload
 
 from app.api.endpoints.users import media
 from app.api.types import DBSession
@@ -12,7 +13,6 @@ from app.api.utils.http_exceptions import (
     USER_NOT_FOUND,
     USERNAME_ALREADY_REGISTERED,
 )
-from app.api.utils.media import MediaType, media_url
 from app.api.utils.user_dependency import LoggedInUID
 from app.core.config import settings
 from app.core.security import (
@@ -22,8 +22,7 @@ from app.core.security import (
     hash_session_secret,
     verify_password,
 )
-from app.db.models import OrganizerGroup, OrganizerMember, OrganizerMemberStatus, Session, User
-from app.schemas.orgs import OrgPagePublicResponse
+from app.db.models import OrganizerMember, Session, User
 from app.schemas.users import (
     UserCreate,
     UserLogin,
@@ -132,26 +131,14 @@ async def logout(req: Request, db: DBSession):
     response_model=UserPublicProfile,
 )
 async def get_public_profile(username: str, db: DBSession):
-    q_profile = (
-        select(User.user_display_name, User.user_pfp_suffix)
-        .where(User.username == username)
-        .limit(1)
-    )
-    r_profile = await db.execute(q_profile)
-    row_profile = r_profile.first()
+    q_user = select(User).where(User.username == username).limit(1)
+    r_user = await db.execute(q_user)
+    s_user = r_user.scalar_one_or_none()
 
-    if row_profile == None:
+    if s_user == None:
         raise USER_NOT_FOUND
 
-    f_disp, f_pfp_suf = row_profile.tuple()
-    pfp_url = (
-        media_url(MediaType.USER_PROFILE, f"{username}_{f_pfp_suf}") if f_pfp_suf != None else ""
-    )
-    return UserPublicProfile(
-        username=username,
-        user_display_name=f_disp,
-        pfp_url=pfp_url,
-    )
+    return s_user
 
 
 # FIXME: Duplicate codes?
@@ -162,48 +149,16 @@ async def get_public_profile(username: str, db: DBSession):
 )
 async def get_profile(uid: LoggedInUID, db: DBSession):
     # General Profile ----------------------------------------------------------
-    q_profile = (
-        select(User.username, User.user_display_name, User.user_pfp_suffix)
+    q_user = (
+        select(User)
         .where(User.user_id == uid)
         .limit(1)
+        .options(selectinload(User.user_org_memberships).joinedload(OrganizerMember.org))
     )
-    r_profile = await db.execute(q_profile)
-    row_profile = r_profile.first()
+    r_user = await db.execute(q_user)
+    s_user = r_user.first()
 
-    if row_profile == None:
+    if s_user == None:
         raise SHOULD_NOT_HAPPEN  # as uid is a dependency
 
-    f_uname, f_disp, f_pfp_suf = row_profile.tuple()
-    pfp_url = (
-        media_url(MediaType.USER_PROFILE, f"{f_uname}_{f_pfp_suf}") if f_pfp_suf != None else ""
-    )
-
-    # Organizer Group Data -----------------------------------------------------
-    q_org_memberships = (
-        select(OrganizerGroup, OrganizerMember.status)
-        .join(OrganizerMember, OrganizerGroup.org_id == OrganizerMember.org_id)
-        .where(OrganizerMember.user_id == uid)
-    )
-    r_org_memberships = await db.execute(q_org_memberships)
-    rows_org_memberships = r_org_memberships.all()
-    tuples_org_memberships = [row.tuple() for row in rows_org_memberships]
-
-    org_invited = [
-        OrgPagePublicResponse.model_validate(org)
-        for (org, status) in tuples_org_memberships
-        if status == OrganizerMemberStatus.INVITED
-    ]
-
-    org_joined = [
-        OrgPagePublicResponse.model_validate(org)
-        for (org, status) in tuples_org_memberships
-        if status == OrganizerMemberStatus.JOINED
-    ]
-
-    return UserPrivateProfile(
-        username=f_uname,
-        user_display_name=f_disp,
-        pfp_url=pfp_url,
-        user_orgs_invited=org_invited,
-        user_orgs_joined=org_joined,
-    )
+    return s_user

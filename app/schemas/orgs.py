@@ -6,7 +6,7 @@ from app.schemas.regex_field_util import (
     USERNAME_LIKE_FIELD,
 )
 from app.schemas.shared_base import OrgPagePublicResponse
-from app.schemas.users import UserResponse
+from app.schemas.users import UserPublicProfile
 
 
 # REQUEST SCHEMAS ----------------------------------------------------------------------------------
@@ -25,11 +25,11 @@ class OrgMemberAction(OrgBase):
 # RESPONSE SCHEMAS ---------------------------------------------------------------------------------
 class OrgMemberResponse(BaseModel):
     status: OrganizerMemberStatus
-    user: UserResponse
+    user: UserPublicProfile
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class OrgPagePrivateResponse(OrgPagePublicResponse):
-    head_user: UserResponse
+    head_user: UserPublicProfile
     org_members: list[OrgMemberResponse]

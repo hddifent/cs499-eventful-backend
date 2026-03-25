@@ -1,5 +1,7 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field
 
+from app.api.utils.media import MediaType, media_url
+from app.db.models import OrganizerMemberStatus
 from app.schemas.orgs import OrgPagePublicResponse
 from app.schemas.regex_field_util import (
     DISPLAY_NAME_LIKE_FIELD,
@@ -23,10 +25,34 @@ class UserLogin(BaseModel):
 
 
 # RESPONSE SCHEMAS ---------------------------------------------------------------------------------
+class UserMembershipResponse(BaseModel):
+    status: OrganizerMemberStatus
+    org: OrgPagePublicResponse
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class UserPublicProfile(UserResponse):
-    pfp_url: str
+    user_pfp_suffix: str | None = Field(default=None, exclude=True)
+
+    @computed_field
+    def pfp_url(self) -> str:
+        if self.user_pfp_suffix:
+            return media_url(MediaType.USER_PROFILE, f"{self.username}_{self.user_pfp_suffix}")
+        return ""
 
 
 class UserPrivateProfile(UserPublicProfile):
-    user_orgs_invited: list[OrgPagePublicResponse]
-    user_orgs_joined: list[OrgPagePublicResponse]
+    user_org_memberships: list[UserMembershipResponse] = Field(default_factory=list, exclude=True)
+
+    @computed_field
+    def user_orgs_invited(self) -> list[OrgPagePublicResponse]:
+        return [
+            m.org for m in self.user_org_memberships if m.status == OrganizerMemberStatus.INVITED
+        ]
+
+    @computed_field
+    def user_orgs_joined(self) -> list[OrgPagePublicResponse]:
+        return [
+            m.org for m in self.user_org_memberships if m.status == OrganizerMemberStatus.JOINED
+        ]

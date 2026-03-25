@@ -1,5 +1,6 @@
 from fastapi import APIRouter, status
 from sqlalchemy import and_, delete, select
+from sqlalchemy.orm import joinedload, selectinload
 
 from app.api.types import DBSession
 from app.api.utils.http_exceptions import (
@@ -93,24 +94,27 @@ async def get_org_by_uname(org_unique_name: str, db: DBSession):
     response_model=OrgPagePrivateResponse,
 )
 async def get_full_org_by_uname(org_unique_name: str, uid: LoggedInUID, db: DBSession):
-    s_org = await get_org_by_uname(org_unique_name, db)
-
-    q_perm = (
-        select(OrganizerMember.status)
-        .where(
-            and_(
-                OrganizerMember.org_id == s_org.org_id,
-                OrganizerMember.user_id == uid,
-            )
+    q_org = (
+        select(OrganizerGroup)
+        .where(OrganizerGroup.org_unique_name == org_unique_name)
+        .options(
+            joinedload(OrganizerGroup.head_user),
+            selectinload(OrganizerGroup.org_members).joinedload(OrganizerMember.user),
         )
         .limit(1)
     )
-    r_perm = await db.execute(q_perm)
-    s_perm = r_perm.scalar_one_or_none()
+    r_org = await db.execute(q_org)
+    s_org = r_org.scalar_one_or_none()
 
-    if s_perm == None:
+    if s_org == None:
+        raise ORG_NOT_FOUND
+
+    org_members = {m.user_id: m.status for m in s_org.org_members}
+    user_perm = org_members.get(uid)
+
+    if user_perm == None:
         raise FORBIDDEN
-    elif s_perm == OrganizerMemberStatus.INVITED:
+    elif user_perm == OrganizerMemberStatus.INVITED:
         raise ORG_INVITATION_NOT_ACCEPTED
 
     return s_org
