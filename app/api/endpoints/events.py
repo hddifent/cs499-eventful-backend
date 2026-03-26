@@ -8,6 +8,7 @@ import httpx
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from pydantic import ValidationError
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from sqlalchemy.orm.strategy_options import selectinload
 
 from app.api.types import DBSession
@@ -21,13 +22,15 @@ from app.api.utils.http_exceptions import (
 )
 from app.api.utils.media import IMG_FILE_EXT, MediaType, media_folder, media_suffix, media_url
 from app.api.utils.org_dependency import AuthorizedOrgID, JoinedOrgList
+from app.api.utils.user_dependency import LoggedInUID
 from app.core.config import STORAGE_URL, settings
-from app.db.models import Event, EventDay, EventPublicationStatus
+from app.db.models import Event, EventApplication, EventDay, EventPublicationStatus
 from app.schemas.events import (
     BoothData,
     CreateEventResponse,
     EventCreate,
     EventPrivatePageResponse,
+    EventPublicPageResponse,
 )
 
 router = APIRouter()
@@ -91,6 +94,39 @@ async def create_new_event(data: EventCreate, org_id: AuthorizedOrgID, db: DBSes
     await db.refresh(new_event)
 
     return new_event
+
+
+@router.get(
+    "/info/{event_slug}",
+    status_code=status.HTTP_200_OK,
+    response_model=EventPublicPageResponse,
+)
+async def get_event_info(event_slug: str, db: DBSession):
+    try:
+        safe_name, suffix = event_slug.rsplit("-", 1)
+    except ValueError:
+        raise BAD_REQUEST
+
+    q_event = (
+        select(Event)
+        .options(
+            selectinload(Event.event_days),
+            selectinload(Event.applications).joinedload(EventApplication.user),
+        )
+        .where(
+            Event.event_safe_name == safe_name,
+            Event.event_suffix == suffix,
+            Event.event_publication_status == EventPublicationStatus.PUBLIC,
+        )
+        .limit(1)
+    )
+    r_event = await db.execute(q_event)
+    s_event = r_event.scalar_one_or_none()
+
+    if s_event is None:
+        raise EVENT_NOT_FOUND
+
+    return s_event
 
 
 @router.get(
@@ -335,3 +371,46 @@ async def publish_event(event_slug: str, org_ids: JoinedOrgList, db: DBSession):
         )
 
     return s_existing_event
+
+
+@router.post(
+    "/apply/{event_slug}",
+    status_code=status.HTTP_201_CREATED,
+)
+async def apply_for_booth(event_slug: str, db: DBSession, uid: LoggedInUID):
+    try:
+        safe_name, suffix = event_slug.rsplit("-", 1)
+    except ValueError:
+        raise BAD_REQUEST
+
+    q_event = select(Event).where(
+        Event.event_safe_name == safe_name,
+        Event.event_suffix == suffix,
+    )
+    r_event = await db.execute(q_event)
+    s_event = r_event.scalar_one_or_none()
+
+    if s_event is None:
+        raise EVENT_NOT_FOUND
+
+    if s_event.event_publication_status != EventPublicationStatus.PUBLIC:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="This event is not open for applications."
+        )
+
+    q_existing_app = select(EventApplication).where(
+        EventApplication.event_id == s_event.event_id, EventApplication.user_id == uid
+    )
+    r_existing_app = await db.execute(q_existing_app)
+    if r_existing_app.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="You have already applied for a booth at this event.",
+        )
+
+    new_app = EventApplication(event_id=s_event.event_id, user_id=uid, status="PENDING")
+
+    db.add(new_app)
+    await db.commit()
+
+    return {"message": "Application submitted successfully."}

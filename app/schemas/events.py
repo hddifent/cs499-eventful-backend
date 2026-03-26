@@ -8,6 +8,7 @@ from app.api.utils.media import MediaType, media_url
 from app.db.models import EventPublicationStatus
 from app.schemas.orgs import OrgBase
 from app.schemas.regex_field_util import DISPLAY_NAME_LIKE_FIELD
+from app.schemas.users import UserPublicProfile
 
 
 # REQUEST SCHEMAS ----------------------------------------------------------------------------------
@@ -50,31 +51,55 @@ class EventDayResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class EventPrivatePageResponse(CreateEventResponse):
+class ApplicationPublicResponse(BaseModel):
+    assigned_booth: Optional[str] = None
+    user: UserPublicProfile
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ApplicationPrivateResponse(ApplicationPublicResponse):
+    status: str
+
+
+class EventPublicPageResponse(CreateEventResponse):
     event_name: str
     event_description: Optional[str]
     event_location: Optional[str]
     event_application_info: Optional[str]
     event_application_accept_start: Optional[datetime]
     event_application_accept_end: Optional[datetime]
-    event_publication_status: EventPublicationStatus
     event_days: List[EventDayResponse]
 
-    event_map_img_suffix: Optional[str] = None
-    event_map_data_suffix: Optional[str] = None
+    applications: List[ApplicationPrivateResponse] = Field(exclude=True, default_factory=list)
+
+    event_map_img_suffix: Optional[str] = Field(exclude=True, default=None)
+    event_map_data_suffix: Optional[str] = Field(exclude=True, default=None)
+
+    @computed_field
+    def accepted_booths(self) -> List[ApplicationPublicResponse]:
+        return [
+            ApplicationPublicResponse(assigned_booth=app.assigned_booth, user=app.user)
+            for app in self.applications
+            if app.status == "ACCEPTED" and app.assigned_booth is not None
+        ]
 
     @computed_field
     def event_map_url(self) -> Optional[str]:
         if not self.event_map_img_suffix:
             return None
-        filename = f"{self.event_slug}_{self.event_map_img_suffix}"
-        return media_url(MediaType.EVENT_MAP, filename)
+        return media_url(MediaType.EVENT_MAP, f"{self.event_slug}_{self.event_map_img_suffix}")
 
     @computed_field
     def event_map_data_url(self) -> Optional[str]:
         if not self.event_map_data_suffix:
             return None
-        filename = f"{self.event_slug}_{self.event_map_data_suffix}"
-        return media_url(MediaType.EVENT_MAP_DISPLAY_DATA, filename)
+        return media_url(
+            MediaType.EVENT_MAP_DISPLAY_DATA, f"{self.event_slug}_{self.event_map_data_suffix}"
+        )
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class EventPrivatePageResponse(EventPublicPageResponse):
+    event_publication_status: EventPublicationStatus

@@ -45,6 +45,7 @@ class User(Base):
     user_sessions: Mapped[List[Session]] = relationship(back_populates="session_user")
     user_orgs_as_head: Mapped[List[OrganizerGroup]] = relationship(back_populates="head_user")
     user_org_memberships: Mapped[List[OrganizerMember]] = relationship(back_populates="user")
+    event_applications: Mapped[List[EventApplication]] = relationship(back_populates="user")
 
 
 # Authentication -----------------------------------------------------------------------------------
@@ -114,6 +115,8 @@ class Event(Base):
     event_organizer: Mapped[OrganizerGroup] = relationship(back_populates="org_events")
     event_days: Mapped[List[EventDay]] = relationship(back_populates="event")
 
+    applications: Mapped[List[EventApplication]] = relationship(back_populates="event")
+
     __table_args__ = (
         CheckConstraint(
             "event_application_accept_start < event_application_accept_end",
@@ -126,7 +129,7 @@ class Event(Base):
             "event_application_info IS NOT NULL AND "
             "event_application_accept_start IS NOT NULL AND "
             "event_application_accept_end IS NOT NULL AND "
-            "event_map_img_suffix IS NOT NULL)"
+            "event_map_img_suffix IS NOT NULL AND"
             "event_map_data_suffix IS NOT NULL)",
             name="check_public_event_completeness",
         ),
@@ -156,3 +159,18 @@ class EventDay(Base):
     )
 
     event: Mapped[Event] = relationship(back_populates="event_days")
+
+
+class EventApplication(Base):
+    __tablename__ = "event_applications"
+
+    app_id: Mapped[int] = mapped_column(BigInteger, primary_key=True, index=True)
+    event_id: Mapped[int] = mapped_column(ForeignKey("events.event_id"), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"), nullable=False)
+
+    status: Mapped[str] = mapped_column(String, default="PENDING", nullable=False)
+
+    assigned_booth: Mapped[str] = mapped_column(String, nullable=True)
+
+    event: Mapped[Event] = relationship(back_populates="applications")
+    user: Mapped[User] = relationship(back_populates="event_applications")
