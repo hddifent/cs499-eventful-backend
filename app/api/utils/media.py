@@ -9,6 +9,8 @@ IMG_FILE_EXT = ["png", "jpg", "jpeg"]
 
 class MediaType(Enum):
     USER_PROFILE = "users/pfp"
+    EVENT_MAP = "events/displaymap"
+    EVENT_MAP_DISPLAY_DATA = "events/mapdata"
 
 
 def media_url(type: MediaType, filename: str) -> str:

@@ -103,6 +103,8 @@ class Event(Base):
     event_application_info: Mapped[str] = mapped_column(Text)
     event_application_accept_start: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     event_application_accept_end: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    event_map_img_suffix: Mapped[str] = mapped_column(String, nullable=True)
+    event_map_data_suffix: Mapped[str] = mapped_column(String, nullable=True)
     event_publication_status: Mapped[EventPublicationStatus] = mapped_column(
         SQLEnum(EventPublicationStatus),
         default=EventPublicationStatus.DRAFT,
@@ -123,7 +125,9 @@ class Event(Base):
             "event_location IS NOT NULL AND "
             "event_application_info IS NOT NULL AND "
             "event_application_accept_start IS NOT NULL AND "
-            "event_application_accept_end IS NOT NULL)",
+            "event_application_accept_end IS NOT NULL AND "
+            "event_map_img_suffix IS NOT NULL)"
+            "event_map_data_suffix IS NOT NULL)",
             name="check_public_event_completeness",
         ),
     )

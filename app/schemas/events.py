@@ -1,8 +1,10 @@
 from datetime import date, datetime, time
-from typing import List, Optional
+from typing import Dict, List, Optional, Tuple
 
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, computed_field
+from fastapi import File, UploadFile
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, Json, computed_field
 
+from app.api.utils.media import MediaType, media_url
 from app.db.models import EventPublicationStatus
 from app.schemas.orgs import OrgBase
 from app.schemas.regex_field_util import DISPLAY_NAME_LIKE_FIELD
@@ -25,6 +27,10 @@ class EventCreate(OrgBase):
     event_days: List[EventDayBase] = Field(min_length=1)
 
 
+class BoothData(BaseModel):
+    bounding_box: Tuple[Tuple[int, int], Tuple[int, int]]
+
+
 # RESPONSE SCHEMAS ---------------------------------------------------------------------------------
 class CreateEventResponse(BaseModel):
     event_safe_name: str = Field(exclude=True)
@@ -44,7 +50,7 @@ class EventDayResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
-class EventPrivatePageResponse(BaseModel):
+class EventPrivatePageResponse(CreateEventResponse):
     event_name: str
     event_description: Optional[str]
     event_location: Optional[str]
@@ -53,5 +59,22 @@ class EventPrivatePageResponse(BaseModel):
     event_application_accept_end: Optional[datetime]
     event_publication_status: EventPublicationStatus
     event_days: List[EventDayResponse]
+
+    event_map_img_suffix: Optional[str] = None
+    event_map_data_suffix: Optional[str] = None
+
+    @computed_field
+    def event_map_url(self) -> Optional[str]:
+        if not self.event_map_img_suffix:
+            return None
+        filename = f"{self.event_slug}_{self.event_map_img_suffix}"
+        return media_url(MediaType.EVENT_MAP, filename)
+
+    @computed_field
+    def event_map_data_url(self) -> Optional[str]:
+        if not self.event_map_data_suffix:
+            return None
+        filename = f"{self.event_slug}_{self.event_map_data_suffix}"
+        return media_url(MediaType.EVENT_MAP_DISPLAY_DATA, filename)
 
     model_config = ConfigDict(from_attributes=True)

@@ -1,17 +1,33 @@
+import json
 import re
 import secrets
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, HTTPException, status
+import httpx
+from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm.strategy_options import selectinload
 
 from app.api.types import DBSession
-from app.api.utils.http_exceptions import BAD_REQUEST, EVENT_NOT_FOUND, FORBIDDEN
+from app.api.utils.http_exceptions import (
+    BAD_FILE_TYPE,
+    BAD_REQUEST,
+    EVENT_NOT_FOUND,
+    FORBIDDEN,
+    INTERNAL_LOGIC_ERROR,
+    INTERNAL_SERVER_ERROR,
+)
+from app.api.utils.media import IMG_FILE_EXT, MediaType, media_folder, media_suffix, media_url
 from app.api.utils.org_dependency import AuthorizedOrgID, JoinedOrgList
-from app.api.utils.user_dependency import LoggedInUID
+from app.core.config import STORAGE_URL, settings
 from app.db.models import Event, EventDay, EventPublicationStatus
-from app.schemas.events import CreateEventResponse, EventCreate, EventPrivatePageResponse
+from app.schemas.events import (
+    BoothData,
+    CreateEventResponse,
+    EventCreate,
+    EventPrivatePageResponse,
+)
 
 router = APIRouter()
 
@@ -158,6 +174,115 @@ async def update_event(event_slug: str, data: EventCreate, org_id: AuthorizedOrg
             eventday_timezone=day.timezone,
         )
         db.add(new_day)
+
+    await db.commit()
+    await db.refresh(s_existing_event)
+
+    return s_existing_event
+
+
+@router.patch(
+    "/map/{event_slug}",
+    status_code=status.HTTP_200_OK,
+    response_model=EventPrivatePageResponse,
+)
+async def update_event_map(
+    event_slug: str,
+    org_ids: JoinedOrgList,
+    db: DBSession,
+    data: str = Form(...),
+    file: UploadFile = File(...),
+):
+    if file.filename == None:
+        raise BAD_REQUEST
+
+    _, file_ext = file.filename.rsplit(".", 1)
+    if file_ext not in IMG_FILE_EXT:
+        raise BAD_FILE_TYPE
+
+    try:
+        safe_name, suffix = event_slug.rsplit("-", 1)
+    except ValueError:
+        raise BAD_REQUEST
+
+    try:
+        raw_dict = json.loads(data)
+        parsed_booth_data = {label: BoothData(**booth) for label, booth in raw_dict.items()}
+    except (json.JSONDecodeError, ValidationError) as _:
+        raise BAD_REQUEST
+
+    q_existing_event = (
+        select(Event)
+        .options(selectinload(Event.event_days))
+        .where(
+            Event.event_safe_name == safe_name,
+            Event.event_suffix == suffix,
+        )
+    )
+    r_existing_event = await db.execute(q_existing_event)
+    s_existing_event = r_existing_event.scalar_one_or_none()
+
+    if s_existing_event == None:
+        raise EVENT_NOT_FOUND
+
+    if s_existing_event.event_org_id not in org_ids:
+        raise FORBIDDEN
+
+    file_suffix_m = f"{media_suffix()}.{file_ext}"
+    file_bytes_m = await file.read()
+
+    req_folder_m = media_folder(MediaType.EVENT_MAP)
+    req_filename_m = f"{event_slug}_{file_suffix_m}"
+
+    async with httpx.AsyncClient() as cli:
+        res = await cli.post(
+            f"{STORAGE_URL}/upload",
+            headers={"EVT-Media-Token": settings.STORAGE_SKEY},
+            data={"folder": req_folder_m},
+            files={"file": (req_filename_m, file_bytes_m, file.content_type)},
+        )
+
+    if res.is_error:
+        raise INTERNAL_SERVER_ERROR
+
+    res_data = res.json()
+    if res_data["location"] == None:
+        raise INTERNAL_SERVER_ERROR
+
+    map_url = media_url(MediaType.EVENT_MAP, req_filename_m)
+
+    if not map_url.endswith(res_data["location"]):
+        raise INTERNAL_LOGIC_ERROR
+
+    booth_dict = {label: booth.model_dump() for label, booth in parsed_booth_data.items()}
+
+    file_suffix_d = f"{media_suffix()}.json"
+    req_folder_d = media_folder(MediaType.EVENT_MAP_DISPLAY_DATA)
+    req_filename_d = f"{event_slug}_{file_suffix_d}"
+    file_bytes_d = json.dumps(booth_dict).encode("utf-8")
+
+    async with httpx.AsyncClient() as cli:
+        res_json = await cli.post(
+            f"{STORAGE_URL}/upload",
+            headers={"EVT-Media-Token": settings.STORAGE_SKEY},
+            data={"folder": req_folder_d},
+            files={"file": (req_filename_d, file_bytes_d, "application/json")},
+        )
+
+    if res_json.is_error:
+        raise INTERNAL_SERVER_ERROR
+
+    res_json_data = res_json.json()
+    if res_json_data.get("location") is None:
+        raise INTERNAL_SERVER_ERROR
+
+    map_data_url = media_url(MediaType.EVENT_MAP_DISPLAY_DATA, req_filename_d)
+
+    if not map_data_url.endswith(res_json_data["location"]):
+        raise INTERNAL_LOGIC_ERROR
+
+    s_existing_event.event_map_img_suffix = file_suffix_m
+    s_existing_event.event_map_data_suffix = file_suffix_d
 
     await db.commit()
     await db.refresh(s_existing_event)
