@@ -22,7 +22,7 @@ from app.core.security import (
     hash_session_secret,
     verify_password,
 )
-from app.db.models import OrganizerMember, Session, User
+from app.db.models import Event, EventApplication, OrganizerMember, Session, User
 from app.schemas.users import (
     UserCreate,
     UserLogin,
@@ -152,7 +152,12 @@ async def get_profile(uid: LoggedInUID, db: DBSession):
         select(User)
         .where(User.user_id == uid)
         .limit(1)
-        .options(selectinload(User.user_org_memberships).joinedload(OrganizerMember.org))
+        .options(
+            selectinload(User.user_org_memberships).joinedload(OrganizerMember.org),
+            selectinload(User.event_applications)
+            .joinedload(EventApplication.event)
+            .selectinload(Event.event_days),
+        )
     )
     r_user = await db.execute(q_user)
     s_user = r_user.scalar_one_or_none()
