@@ -40,6 +40,8 @@ async def get_current_user_id(req: Request, db: DBSession) -> int:
         s_session.expire_window = datetime.now(UTC) + timedelta(seconds=settings.SESSION_TIMEOUT)
         await db.commit()
 
+    await db.refresh(s_session)
+
     return s_session.user_id
 
 
