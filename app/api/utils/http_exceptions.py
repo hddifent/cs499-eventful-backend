@@ -70,6 +70,11 @@ ORG_NOT_FOUND = HTTPException(
     detail="Organizer Group not found.",
 )
 
+EVENT_NOT_FOUND = HTTPException(
+    status_code=status.HTTP_404_NOT_FOUND,
+    detail="Event not found.",
+)
+
 INTERNAL_SERVER_ERROR = HTTPException(
     status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
     detail="Internal server error. Operation cannot be completed from connection error.",

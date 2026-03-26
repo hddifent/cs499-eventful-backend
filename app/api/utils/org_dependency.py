@@ -51,5 +51,16 @@ async def get_authorized_org_id(data: OrgBase, uid: LoggedInUID, db: DBSession) 
     return org_id
 
 
+async def get_all_org_of_user(uid: LoggedInUID, db: DBSession) -> list[int]:
+    q_member = select(OrganizerMember.org_id).where(
+        and_(OrganizerMember.user_id == uid, OrganizerMember.status == OrganizerMemberStatus.JOINED)
+    )
+    r_member = await db.execute(q_member)
+    member_org_ids = r_member.scalars().all()
+
+    return list(set(member_org_ids))
+
+
 OrgMembership = Annotated[tuple[int, OrganizerMemberStatus], Depends(get_org_membership_of_user)]
 AuthorizedOrgID = Annotated[int, Depends(get_authorized_org_id)]
+JoinedOrgList = Annotated[list[int], Depends(get_all_org_of_user)]
