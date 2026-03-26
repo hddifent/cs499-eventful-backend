@@ -1,6 +1,7 @@
 import json
 import re
 import secrets
+from sqlite3 import IntegrityError
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -286,5 +287,51 @@ async def update_event_map(
 
     await db.commit()
     await db.refresh(s_existing_event)
+
+    return s_existing_event
+
+
+@router.patch(
+    "/publish/{event_slug}",
+    status_code=status.HTTP_200_OK,
+    response_model=EventPrivatePageResponse,
+)
+async def publish_event(event_slug: str, org_ids: JoinedOrgList, db: DBSession):
+    try:
+        safe_name, suffix = event_slug.rsplit("-", 1)
+    except ValueError:
+        raise BAD_REQUEST
+
+    q_existing_event = (
+        select(Event)
+        .options(selectinload(Event.event_days))
+        .where(
+            Event.event_safe_name == safe_name,
+            Event.event_suffix == suffix,
+        )
+    )
+    r_existing_event = await db.execute(q_existing_event)
+    s_existing_event = r_existing_event.scalar_one_or_none()
+
+    if s_existing_event is None:
+        raise EVENT_NOT_FOUND
+
+    if s_existing_event.event_org_id not in org_ids:
+        raise FORBIDDEN
+
+    if s_existing_event.event_publication_status == EventPublicationStatus.PUBLIC:
+        return s_existing_event
+
+    s_existing_event.event_publication_status = EventPublicationStatus.PUBLIC
+
+    try:
+        await db.commit()
+        await db.refresh(s_existing_event)
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot publish: The event is missing required information (description, location, application dates, or map).",
+        )
 
     return s_existing_event
