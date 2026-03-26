@@ -5,13 +5,12 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, computed_field
 
 from app.api.utils.media import MediaType, media_url
 from app.db.models import OrganizerMemberStatus
-from app.schemas.orgs import OrgPagePublicResponse
 from app.schemas.regex_field_util import (
     DISPLAY_NAME_LIKE_FIELD,
     PASSWORD_LIKE_FIELD,
     USERNAME_LIKE_FIELD,
 )
-from app.schemas.shared_base import UserResponse
+from app.schemas.shared_base import OrgPagePublicResponse, UserResponse
 
 
 # REQUEST SCHEMAS ----------------------------------------------------------------------------------

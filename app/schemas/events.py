@@ -5,8 +5,8 @@ from pydantic import BaseModel, ConfigDict, Field, HttpUrl, computed_field
 
 from app.api.utils.media import MediaType, media_url
 from app.db.models import EventPublicationStatus
-from app.schemas.orgs import OrgBase
 from app.schemas.regex_field_util import DISPLAY_NAME_LIKE_FIELD
+from app.schemas.shared_base import OrgBase
 from app.schemas.users import UserPublicProfile
 
 
@@ -68,6 +68,10 @@ class EventSummaryResponse(CreateEventResponse):
     event_application_accept_start: Optional[datetime]
     event_application_accept_end: Optional[datetime]
     event_days: List[EventDayResponse]
+
+
+class EventSummaryWithStatusResponse(EventSummaryResponse):
+    event_publication_status: EventPublicationStatus
 
 
 class EventPublicPageResponse(EventSummaryResponse):

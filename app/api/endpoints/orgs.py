@@ -15,7 +15,7 @@ from app.api.utils.http_exceptions import (
 )
 from app.api.utils.org_dependency import AuthorizedOrgID, OrgMembership
 from app.api.utils.user_dependency import LoggedInUID
-from app.db.models import OrganizerGroup, OrganizerMember, OrganizerMemberStatus, User
+from app.db.models import Event, OrganizerGroup, OrganizerMember, OrganizerMemberStatus, User
 from app.schemas.orgs import (
     OrgCreate,
     OrgMemberAction,
@@ -100,6 +100,7 @@ async def get_full_org_by_uname(org_unique_name: str, uid: LoggedInUID, db: DBSe
         .options(
             joinedload(OrganizerGroup.head_user),
             selectinload(OrganizerGroup.org_members).joinedload(OrganizerMember.user),
+            selectinload(OrganizerGroup.org_events).selectinload(Event.event_days),
         )
         .limit(1)
     )
