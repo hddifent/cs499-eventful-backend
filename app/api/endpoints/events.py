@@ -24,8 +24,9 @@ from app.api.utils.media import IMG_FILE_EXT, MediaType, media_folder, media_suf
 from app.api.utils.org_dependency import AuthorizedOrgID, JoinedOrgList
 from app.api.utils.user_dependency import LoggedInUID
 from app.core.config import STORAGE_URL, settings
-from app.db.models import Event, EventApplication, EventDay, EventPublicationStatus
+from app.db.models import Event, EventApplication, EventDay, EventPublicationStatus, User
 from app.schemas.events import (
+    AssignBoothRequest,
     BoothData,
     CreateEventResponse,
     EventCreate,
@@ -142,7 +143,10 @@ async def get_full_event_info(event_slug: str, db: DBSession, org_ids: JoinedOrg
 
     q_event = (
         select(Event)
-        .options(selectinload(Event.event_days))
+        .options(
+            selectinload(Event.event_days),
+            selectinload(Event.applications).joinedload(EventApplication.user),
+        )
         .where(Event.event_safe_name == safe_name, Event.event_suffix == suffix)
         .limit(1)
     )
@@ -371,6 +375,57 @@ async def publish_event(event_slug: str, org_ids: JoinedOrgList, db: DBSession):
         )
 
     return s_existing_event
+
+
+@router.patch(
+    "/assign/{event_slug}",
+    status_code=status.HTTP_200_OK,
+)
+async def assign_booth(
+    event_slug: str,
+    data: AssignBoothRequest,
+    db: DBSession,
+    org_ids: JoinedOrgList,
+):
+    try:
+        safe_name, suffix = event_slug.rsplit("-", 1)
+    except ValueError:
+        raise BAD_REQUEST
+
+    q_event = select(Event).where(Event.event_safe_name == safe_name, Event.event_suffix == suffix)
+    r_event = await db.execute(q_event)
+    s_event = r_event.scalar_one_or_none()
+
+    if not s_event or s_event.event_org_id not in org_ids:
+        raise EVENT_NOT_FOUND
+
+    q_conflict = select(EventApplication).where(
+        EventApplication.event_id == s_event.event_id,
+        EventApplication.assigned_booth == data.assigned_booth,
+        EventApplication.status == "ACCEPTED",
+    )
+    r_conflict = await db.execute(q_conflict)
+    if r_conflict.scalar_one_or_none() is not None:
+        raise HTTPException(
+            status_code=409, detail="This booth is already assigned to someone else."
+        )
+
+    q_app = (
+        select(EventApplication)
+        .join(User)
+        .where(EventApplication.event_id == s_event.event_id, User.username == data.username)
+    )
+    r_app = await db.execute(q_app)
+    s_app = r_app.scalar_one_or_none()
+
+    if not s_app:
+        raise HTTPException(status_code=404, detail="Application not found for this user.")
+
+    s_app.status = "ACCEPTED"
+    s_app.assigned_booth = data.assigned_booth
+
+    await db.commit()
+    return {"message": "Booth assigned successfully"}
 
 
 @router.post(

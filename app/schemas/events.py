@@ -1,8 +1,7 @@
 from datetime import date, datetime, time
-from typing import Dict, List, Optional, Tuple
+from typing import List, Optional, Tuple
 
-from fastapi import File, UploadFile
-from pydantic import BaseModel, ConfigDict, Field, HttpUrl, Json, computed_field
+from pydantic import BaseModel, ConfigDict, Field, HttpUrl, computed_field
 
 from app.api.utils.media import MediaType, media_url
 from app.db.models import EventPublicationStatus
@@ -103,3 +102,12 @@ class EventPublicPageResponse(CreateEventResponse):
 
 class EventPrivatePageResponse(EventPublicPageResponse):
     event_publication_status: EventPublicationStatus
+
+    @computed_field
+    def all_applications(self) -> List[ApplicationPrivateResponse]:
+        return self.applications
+
+
+class AssignBoothRequest(BaseModel):
+    username: str
+    assigned_booth: str
