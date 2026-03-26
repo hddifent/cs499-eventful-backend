@@ -73,7 +73,7 @@ async def create_org(data: OrgCreate, uid: LoggedInUID, db: DBSession):
 
 
 @router.get(
-    "/{org_unique_name}",
+    "/profile/{org_unique_name}",
     status_code=status.HTTP_200_OK,
     response_model=OrgPagePublicResponse,
 )
@@ -89,7 +89,7 @@ async def get_org_by_uname(org_unique_name: str, db: DBSession):
 
 
 @router.get(
-    "/{org_unique_name}/full",
+    "/profile/{org_unique_name}/full",
     status_code=status.HTTP_200_OK,
     response_model=OrgPagePrivateResponse,
 )

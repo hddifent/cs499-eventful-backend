@@ -148,7 +148,6 @@ async def get_public_profile(username: str, db: DBSession):
     response_model=UserPrivateProfile,
 )
 async def get_profile(uid: LoggedInUID, db: DBSession):
-    # General Profile ----------------------------------------------------------
     q_user = (
         select(User)
         .where(User.user_id == uid)
@@ -156,9 +155,14 @@ async def get_profile(uid: LoggedInUID, db: DBSession):
         .options(selectinload(User.user_org_memberships).joinedload(OrganizerMember.org))
     )
     r_user = await db.execute(q_user)
-    s_user = r_user.first()
+    s_user = r_user.scalar_one_or_none()
 
     if s_user == None:
         raise SHOULD_NOT_HAPPEN  # as uid is a dependency
 
     return s_user
+
+
+@router.get("/verifysession", status_code=200)
+def verify_session(uid: LoggedInUID):
+    return {"valid": True}
