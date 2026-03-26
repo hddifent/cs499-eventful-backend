@@ -12,6 +12,8 @@ _ocr_model = PaddleOCR(
     use_doc_unwarping=False,
     use_textline_orientation=False,
     lang="en",
+    det_db_unclip_ratio=1.2,
+    det_db_box_thresh=0.6,
 )
 
 

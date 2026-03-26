@@ -152,6 +152,10 @@ def extract_image_contours(image: np.ndarray):
     selected_area_text = cv2.bitwise_not(selected_area_text)
     selected_area_text = cv2.merge([selected_area_text, selected_area_text, selected_area_text])
 
+    for contour in contour_group_bases:
+        x, y, w, h = cv2.boundingRect(contour)
+        cv2.rectangle(selected_area_text, (x, y), (x + w, y + h), (0, 0, 0), thickness=1)
+
     return {
         "booth_contours": contour_group_bases,  # For UI Rendering
         "booth_text_img": selected_area_text,  # For OCR Scanning
