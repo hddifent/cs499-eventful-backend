@@ -2,6 +2,7 @@ import json
 import re
 import secrets
 from sqlite3 import IntegrityError
+from typing import List
 from zoneinfo import ZoneInfo
 
 import httpx
@@ -32,6 +33,7 @@ from app.schemas.events import (
     EventCreate,
     EventPrivatePageResponse,
     EventPublicPageResponse,
+    EventSummaryResponse,
 )
 
 router = APIRouter()
@@ -43,9 +45,21 @@ def _generate_slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text).strip("-")
 
 
-@router.get("/")
-def get_events():
-    return []
+@router.get(
+    "/",
+    status_code=status.HTTP_200_OK,
+    response_model=List[EventSummaryResponse],
+)
+async def get_public_events(db: DBSession):
+    q_events = (
+        select(Event)
+        .options(selectinload(Event.event_days))
+        .where(Event.event_publication_status == EventPublicationStatus.PUBLIC)
+    )
+    r_events = await db.execute(q_events)
+    s_events = r_events.scalars().all()
+
+    return list(s_events)
 
 
 @router.post(

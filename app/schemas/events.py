@@ -61,14 +61,17 @@ class ApplicationPrivateResponse(ApplicationPublicResponse):
     status: str
 
 
-class EventPublicPageResponse(CreateEventResponse):
+class EventSummaryResponse(CreateEventResponse):
     event_name: str
     event_description: Optional[str]
     event_location: Optional[str]
-    event_application_info: Optional[str]
     event_application_accept_start: Optional[datetime]
     event_application_accept_end: Optional[datetime]
     event_days: List[EventDayResponse]
+
+
+class EventPublicPageResponse(EventSummaryResponse):
+    event_application_info: Optional[str]
 
     applications: List[ApplicationPrivateResponse] = Field(exclude=True, default_factory=list)
 
