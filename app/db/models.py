@@ -129,7 +129,7 @@ class Event(Base):
             "event_application_info IS NOT NULL AND "
             "event_application_accept_start IS NOT NULL AND "
             "event_application_accept_end IS NOT NULL AND "
-            "event_map_img_suffix IS NOT NULL AND"
+            "event_map_img_suffix IS NOT NULL AND "
             "event_map_data_suffix IS NOT NULL)",
             name="check_public_event_completeness",
         ),

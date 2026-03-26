@@ -358,7 +358,10 @@ async def publish_event(event_slug: str, org_ids: JoinedOrgList, db: DBSession):
 
     q_existing_event = (
         select(Event)
-        .options(selectinload(Event.event_days))
+        .options(
+            selectinload(Event.event_days),
+            selectinload(Event.applications).joinedload(EventApplication.user),
+        )
         .where(
             Event.event_safe_name == safe_name,
             Event.event_suffix == suffix,
