@@ -45,19 +45,24 @@ def try_format_booth_number(s: str, formatter: str):
     str: The formatted booth number. If len(s) and len(formatter) are not the same, returns s.
     """
 
-    if len(s) != len(formatter):
+    s_filtered = ""
+    for c in s:
+        if c.isalnum():
+            s_filtered += c
+
+    if len(s_filtered) != len(formatter):
         print(
             f"The length of inputted booth number and formatter are not the same. ({len(s)} and {len(formatter)})"
         )
-        return s
+        return s_filtered
 
     out = ""
     for i, c in enumerate(formatter):
         match c:
             case "#":
-                out += _match_letter_to_number(s[i])
+                out += _match_letter_to_number(s_filtered[i])
             case "$":
-                out += _match_number_to_letter(s[i])
+                out += _match_number_to_letter(s_filtered[i])
             case _:
                 out += c
     return out
