@@ -1,9 +1,5 @@
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, Request, status
-from sqlalchemy import delete, select
-from sqlalchemy.orm import selectinload
-
 from app.api.endpoints.users import media
 from app.api.types import DBSession
 from app.api.utils.http_exceptions import (
@@ -30,6 +26,9 @@ from app.schemas.users import (
     UserPublicProfile,
     UserResponse,
 )
+from fastapi import APIRouter, Request, status
+from sqlalchemy import delete, select
+from sqlalchemy.orm import selectinload
 
 router = APIRouter()
 router.include_router(media.router, prefix="/media")
@@ -41,13 +40,17 @@ router.include_router(media.router, prefix="/media")
     response_model=UserResponse,
 )
 async def create_user(data: UserCreate, db: DBSession):
-    q_existing_umail = select(User.user_id).where(User.user_email == data.user_email).limit(1)
+    q_existing_umail = (
+        select(User.user_id).where(User.user_email == data.user_email).limit(1)
+    )
     r_existing_umail = await db.execute(q_existing_umail)
     s_existing_umail = r_existing_umail.scalar_one_or_none()
     if s_existing_umail != None:
         raise EMAIL_ALREADY_REGISTERED
 
-    q_existing_uname = select(User.user_id).where(User.username == data.username).limit(1)
+    q_existing_uname = (
+        select(User.user_id).where(User.username == data.username).limit(1)
+    )
     r_existing_uname = await db.execute(q_existing_uname)
     s_existing_uname = r_existing_uname.scalar_one_or_none()
     if s_existing_uname != None:
@@ -74,7 +77,11 @@ async def create_user(data: UserCreate, db: DBSession):
     status_code=status.HTTP_200_OK,
 )
 async def login(data: UserLogin, db: DBSession):
-    q_user = select(User.user_id, User.user_pwd).where(User.username == data.username).limit(1)
+    q_user = (
+        select(User.user_id, User.user_pwd)
+        .where(User.username == data.username)
+        .limit(1)
+    )
     r_user = await db.execute(q_user)
     row_user = r_user.first()
 
